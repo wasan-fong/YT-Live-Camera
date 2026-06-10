@@ -1050,3 +1050,31 @@ body {
 .form-group input[type="range"]::-moz-range-thumb:hover {
     transform: scale(1.2);
 }
+
+/* Search list preview button styling */
+.yt-result-pvw-btn {
+    background: rgba(0, 230, 118, 0.15);
+    border: 1px solid var(--color-pvw);
+    color: var(--color-pvw);
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 0.75rem;
+    flex-shrink: 0;
+    transition: all 0.2s;
+    margin-right: 4px;
+}
+.yt-result-pvw-btn:hover {
+    background: var(--color-pvw);
+    color: #fff;
+    transform: scale(1.1);
+}
+.yt-result-pvw-btn.active {
+    background: var(--color-pvw);
+    color: #fff;
+    box-shadow: 0 0 8px var(--color-pvw);
+}

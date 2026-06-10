@@ -320,6 +320,7 @@
         let originalZoom = 1.0;
         let originalPanX = 0;
         let originalPanY = 0;
+        let lastSearchResults = [];
 
         // --- Presets Data ---
         const PRESETS = {
@@ -481,8 +482,8 @@
 
             if (previewVideoId) {
                 pvwMon.classList.add('active-tally');
-                const item = playlist.find(v => v.id === previewVideoId);
-                pvwName.textContent = item ? `${item.name || item.id}` : previewVideoId;
+                const item = playlist.find(v => v.id === previewVideoId) || lastSearchResults.find(v => v.id === previewVideoId);
+                pvwName.textContent = item ? `${item.name || item.title || item.id}` : previewVideoId;
             } else {
                 pvwMon.classList.remove('active-tally');
                 pvwName.textContent = 'NONE';
@@ -555,14 +556,17 @@
 
         function renderSearchResults(results) {
             ytSearchResults.innerHTML = '';
-            if (results.length === 0) {
-                ytSearchResults.innerHTML = '<div style="text-align:center; padding: 15px; color: var(--text-muted); font-size: 0.8rem; width: 100%;">No results found.</div>';
+            lastSearchResults = results || [];
+            
+            // Filter out items already in the playlist
+            const filteredResults = lastSearchResults.filter(video => !playlist.some(item => item.id === video.id));
+            
+            if (filteredResults.length === 0) {
+                ytSearchResults.innerHTML = '<div style="text-align:center; padding: 15px; color: var(--text-muted); font-size: 0.8rem; width: 100%;">No new results found.</div>';
                 return;
             }
 
-            results.forEach(video => {
-                const isAlreadyAdded = playlist.some(item => item.id === video.id);
-                
+            filteredResults.forEach(video => {
                 const card = document.createElement('div');
                 card.className = 'yt-result-card';
 
@@ -585,14 +589,31 @@
                 info.appendChild(title);
                 info.appendChild(channel);
 
-                const addBtn = document.createElement('button');
-                addBtn.className = `yt-result-add-btn ${isAlreadyAdded ? 'added' : ''}`;
-                addBtn.innerHTML = isAlreadyAdded ? '<i class="fa-solid fa-check"></i>' : '<i class="fa-solid fa-plus"></i>';
-                addBtn.disabled = isAlreadyAdded;
-                addBtn.title = isAlreadyAdded ? 'Already added' : 'Add to playlist';
+                // PVW (Preview) button
+                const pvwBtn = document.createElement('button');
+                pvwBtn.className = `yt-result-pvw-btn ${video.id === previewVideoId ? 'active' : ''}`;
+                pvwBtn.innerHTML = '<i class="fa-solid fa-tv"></i>';
+                pvwBtn.title = 'Preview this feed';
+                
+                pvwBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    if (previewVideoId === video.id) {
+                        previewVideoId = '';
+                    } else {
+                        previewVideoId = video.id;
+                    }
+                    syncMonitorPlayers();
+                    renderSearchResults(lastSearchResults);
+                };
 
-                addBtn.onclick = async () => {
-                    if (playlist.some(item => item.id === video.id)) return;
+                // Add button
+                const addBtn = document.createElement('button');
+                addBtn.className = 'yt-result-add-btn';
+                addBtn.innerHTML = '<i class="fa-solid fa-plus"></i>';
+                addBtn.title = 'Add to playlist';
+
+                addBtn.onclick = async (e) => {
+                    e.stopPropagation();
                     
                     const group = ytDefaultGroup.value.trim().toUpperCase() || 'YOUTUBE';
                     playlist.push({
@@ -610,15 +631,11 @@
                     await savePlaylist();
                     renderSwitcherUI();
                     syncMonitorPlayers();
-
-                    addBtn.className = 'yt-result-add-btn added';
-                    addBtn.innerHTML = '<i class="fa-solid fa-check"></i>';
-                    addBtn.disabled = true;
-                    addBtn.title = 'Already added';
                 };
 
                 card.appendChild(thumb);
                 card.appendChild(info);
+                card.appendChild(pvwBtn);
                 card.appendChild(addBtn);
                 ytSearchResults.appendChild(card);
             });
@@ -626,6 +643,11 @@
 
         // --- Render Switcher UI (Redesigned Playlist Items Manager) ---
         function renderSwitcherUI() {
+            // Keep search results highlighting and filtering in sync with playlist
+            if (typeof lastSearchResults !== 'undefined' && lastSearchResults.length > 0) {
+                renderSearchResults(lastSearchResults);
+            }
+
             const grid = document.getElementById('playlist-items');
             grid.innerHTML = '';
 
@@ -930,6 +952,17 @@
                 alert("Please select a camera on PVW first to execute transition.");
                 return;
             }
+            
+            const pvwItem = playlist.find(v => v.id === previewVideoId);
+            if (!pvwItem) {
+                alert("Please add this camera to your playlist first to transition it live.");
+                return;
+            }
+            if (!pvwItem.starred) {
+                alert("Please star this camera in your playlist first to play it on the Dashboard.");
+                return;
+            }
+
             const temp = programVideoId;
             programVideoId = previewVideoId;
             previewVideoId = temp;
@@ -948,6 +981,16 @@
         document.getElementById('auto-btn').onclick = () => {
             if (!previewVideoId) {
                 alert("Please select a camera on PVW first to execute transition.");
+                return;
+            }
+
+            const pvwItem = playlist.find(v => v.id === previewVideoId);
+            if (!pvwItem) {
+                alert("Please add this camera to your playlist first to transition it live.");
+                return;
+            }
+            if (!pvwItem.starred) {
+                alert("Please star this camera in your playlist first to play it on the Dashboard.");
                 return;
             }
             
@@ -1013,6 +1056,15 @@
         function startTBarDrag(e) {
             if (!previewVideoId) {
                 alert("Please select a camera on PVW first to execute manual transition.");
+                return;
+            }
+            const pvwItem = playlist.find(v => v.id === previewVideoId);
+            if (!pvwItem) {
+                alert("Please add this camera to your playlist first to transition it live.");
+                return;
+            }
+            if (!pvwItem.starred) {
+                alert("Please star this camera in your playlist first to play it on the Dashboard.");
                 return;
             }
             isDraggingTBar = true;

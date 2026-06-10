@@ -234,7 +234,8 @@
     {
         "id": "Q71sLS8h9a4",
         "name": "\ud83d\udd34 El Gaucho | Soi 19 | Sukhumvit Road | Bangkok | Thailand | Live Street Webcam | 2160p 4K",
-        "group": "SUKHUMVIT"
+        "group": "SUKHUMVIT",
+        "starred": true
     },
     {
         "id": "trYbH392vKU",
@@ -249,7 +250,8 @@
     {
         "id": "UdDpOaGviq4",
         "name": "Chao Phraya River, Bangkok, Thailand | Jack's Bar | Live Camera Stream",
-        "group": "CHAO PHRAYA RIVER"
+        "group": "CHAO PHRAYA RIVER",
+        "starred": true
     },
     {
         "id": "WSm_r0eNl1E",
