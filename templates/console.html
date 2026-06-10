@@ -142,6 +142,9 @@
                     <button class="search-tab-btn" id="search-tab-banned">
                         <i class="fa-solid fa-ban"></i> BANNED (<span id="banned-count">0</span>)
                     </button>
+                    <button class="search-tab-btn" id="search-tab-history">
+                        <i class="fa-solid fa-clock-rotate-left"></i> HISTORY (<span id="history-count">0</span>)
+                    </button>
                 </div>
 
                 <div class="search-results-list" id="yt-search-results">
@@ -317,7 +320,8 @@
         // --- System State ---
         let playlist = [];
         let bannedList = [];
-        let activeSearchTab = 'results'; // 'results' or 'banned'
+        let historyList = [];
+        let activeSearchTab = 'results'; // 'results', 'banned', or 'history'
         let programVideoId = '';
         let previewVideoId = '';
         let searchQuery = '';
@@ -428,6 +432,36 @@
             }
         }
 
+        // --- Load & Save History ---
+        async function loadHistoryList() {
+            try {
+                const res = await fetch('/history');
+                const data = await res.json();
+                historyList = data.history || [];
+                document.getElementById('history-count').textContent = historyList.length;
+                if (activeSearchTab === 'history') {
+                    renderHistoryList();
+                } else if (typeof renderSearchResults === 'function') {
+                    renderSearchResults(lastSearchResults);
+                }
+            } catch(e) {
+                console.error("Console: Error loading history", e);
+            }
+        }
+
+        async function saveHistoryList() {
+            try {
+                await fetch('/history', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ history: historyList })
+                });
+                document.getElementById('history-count').textContent = historyList.length;
+            } catch(e) {
+                console.error("Console: Error saving history", e);
+            }
+        }
+
         // --- YouTube Embed Players ---
         function onYouTubeIframeAPIReady() {
             console.log("Console: YouTube API Ready, building monitors...");
@@ -464,6 +498,7 @@
 
             loadPlaylist();
             loadBannedList();
+            loadHistoryList();
         }
 
         function syncMonitorPlayers() {
@@ -483,6 +518,7 @@
                     pgmPlayer.loadVideoById({ videoId: programVideoId });
                     pgmPlayer.mute();
                     document.getElementById('pgm-placeholder').style.display = 'none';
+                    addToHistory(programVideoId);
                 } else {
                     pgmPlayer.stopVideo();
                     document.getElementById('pgm-placeholder').style.display = 'flex';
@@ -569,11 +605,13 @@
         // Tab buttons
         const tabResults = document.getElementById('search-tab-results');
         const tabBanned = document.getElementById('search-tab-banned');
+        const tabHistory = document.getElementById('search-tab-history');
 
         tabResults.onclick = () => {
             activeSearchTab = 'results';
             tabResults.classList.add('active');
             tabBanned.classList.remove('active');
+            tabHistory.classList.remove('active');
             renderSearchResults(lastSearchResults);
         };
 
@@ -581,7 +619,16 @@
             activeSearchTab = 'banned';
             tabBanned.classList.add('active');
             tabResults.classList.remove('active');
+            tabHistory.classList.remove('active');
             renderBannedList();
+        };
+
+        tabHistory.onclick = () => {
+            activeSearchTab = 'history';
+            tabHistory.classList.add('active');
+            tabResults.classList.remove('active');
+            tabBanned.classList.remove('active');
+            renderHistoryList();
         };
 
         async function performYoutubeSearch() {
@@ -592,6 +639,7 @@
             activeSearchTab = 'results';
             tabResults.classList.add('active');
             tabBanned.classList.remove('active');
+            tabHistory.classList.remove('active');
 
             ytSearchBtn.disabled = true;
             ytSearchBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
@@ -701,6 +749,118 @@
             });
         }
 
+        async function addToHistory(id) {
+            if (!id) return;
+            if (historyList.some(item => item.id === id)) return;
+
+            let title = 'Untitled Video';
+            let channel = 'Unknown Channel';
+            let thumbnail = `https://img.youtube.com/vi/${id}/mqdefault.jpg`;
+            
+            const item = playlist.find(v => v.id === id) || lastSearchResults.find(v => v.id === id);
+            if (item) {
+                title = item.name || item.title || title;
+                channel = item.channel || channel;
+                thumbnail = item.thumbnail || thumbnail;
+            }
+
+            historyList.push({ id, title, channel, thumbnail });
+            await saveHistoryList();
+
+            if (activeSearchTab === 'results') {
+                renderSearchResults(lastSearchResults);
+            } else if (activeSearchTab === 'history') {
+                renderHistoryList();
+            }
+            renderSwitcherUI();
+        }
+
+        async function unhistoryVideo(videoId) {
+            historyList = historyList.filter(item => item.id !== videoId);
+            await saveHistoryList();
+            
+            if (activeSearchTab === 'results') {
+                renderSearchResults(lastSearchResults);
+            } else if (activeSearchTab === 'history') {
+                renderHistoryList();
+            }
+        }
+
+        async function clearHistory() {
+            if (confirm("Are you sure you want to CLEAR the watch history?")) {
+                historyList = [];
+                await saveHistoryList();
+                if (activeSearchTab === 'results') {
+                    renderSearchResults(lastSearchResults);
+                } else if (activeSearchTab === 'history') {
+                    renderHistoryList();
+                }
+            }
+        }
+
+        function renderHistoryList() {
+            ytSearchResults.innerHTML = '';
+            
+            if (historyList.length > 0) {
+                const clearHeader = document.createElement('div');
+                clearHeader.style.display = 'flex';
+                clearHeader.style.justifyContent = 'flex-end';
+                clearHeader.style.padding = '4px 8px';
+                
+                const clearBtn = document.createElement('button');
+                clearBtn.className = 'btn-secondary';
+                clearBtn.style.padding = '4px 10px';
+                clearBtn.style.fontSize = '0.7rem';
+                clearBtn.innerHTML = '<i class="fa-solid fa-trash-can"></i> CLEAR ALL';
+                clearBtn.onclick = clearHistory;
+                
+                clearHeader.appendChild(clearBtn);
+                ytSearchResults.appendChild(clearHeader);
+            } else {
+                ytSearchResults.innerHTML = '<div style="text-align:center; padding: 20px; color: var(--text-muted); font-size: 0.8rem; width: 100%;">No watch history.</div>';
+                return;
+            }
+
+            historyList.forEach(video => {
+                const card = document.createElement('div');
+                card.className = 'yt-result-card';
+
+                const thumb = document.createElement('div');
+                thumb.className = 'yt-result-thumb';
+                thumb.style.backgroundImage = `url('${video.thumbnail || "https://img.youtube.com/vi/" + video.id + "/mqdefault.jpg"}')`;
+
+                const info = document.createElement('div');
+                info.className = 'yt-result-info';
+
+                const title = document.createElement('div');
+                title.className = 'yt-result-title';
+                title.textContent = video.title || 'Untitled Video';
+                title.title = video.title;
+
+                const channel = document.createElement('div');
+                channel.className = 'yt-result-channel';
+                channel.textContent = video.channel || 'Unknown Channel';
+
+                info.appendChild(title);
+                info.appendChild(channel);
+
+                // Unhistory button
+                const unhistBtn = document.createElement('button');
+                unhistBtn.className = 'yt-result-unban-btn';
+                unhistBtn.innerHTML = '<i class="fa-solid fa-rotate-left"></i>';
+                unhistBtn.title = 'Remove from history';
+                unhistBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    unhistoryVideo(video.id);
+                };
+
+                card.appendChild(thumb);
+                card.appendChild(info);
+                card.appendChild(unhistBtn);
+                ytSearchResults.appendChild(card);
+            });
+        }
+
         function renderSearchResults(results) {
             ytSearchResults.innerHTML = '';
             lastSearchResults = results || [];
@@ -709,11 +869,16 @@
                 renderBannedList();
                 return;
             }
+            if (activeSearchTab === 'history') {
+                renderHistoryList();
+                return;
+            }
             
-            // Filter out items already in the playlist or banned list
+            // Filter out items already in the playlist, banned list, or history list
             const filteredResults = lastSearchResults.filter(video => 
                 !playlist.some(item => item.id === video.id) &&
-                !bannedList.some(item => item.id === video.id)
+                !bannedList.some(item => item.id === video.id) &&
+                !historyList.some(item => item.id === video.id)
             );
             
             if (filteredResults.length === 0) {

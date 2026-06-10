@@ -140,7 +140,30 @@ async def update_banned(data: BannedUpdate):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-def parse_search_items(contents, results, playlist_ids, banned_ids, live):
+class HistoryUpdate(BaseModel):
+    history: List[dict]
+
+@app.get("/history")
+async def get_history():
+    try:
+        with open("history.pl", "r") as f:
+            content = f.read().strip()
+            if not content:
+                return {"history": []}
+            return {"history": json.loads(content)}
+    except FileNotFoundError:
+        return {"history": []}
+
+@app.post("/history")
+async def update_history(data: HistoryUpdate):
+    try:
+        with open("history.pl", "w") as f:
+            json.dump(data.history, f, indent=4)
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+def parse_search_items(contents, results, playlist_ids, banned_ids, history_ids, live):
     continuation_token = None
     for section in contents:
         # Check for itemSectionRenderer
@@ -151,7 +174,7 @@ def parse_search_items(contents, results, playlist_ids, banned_ids, live):
                 video_renderer = item.get('videoRenderer', {})
                 if video_renderer:
                     video_id = video_renderer.get('videoId')
-                    if video_id and video_id not in playlist_ids and video_id not in banned_ids:
+                    if video_id and video_id not in playlist_ids and video_id not in banned_ids and video_id not in history_ids:
                         title = ""
                         title_runs = video_renderer.get('title', {}).get('runs', [])
                         if title_runs:
@@ -189,7 +212,7 @@ async def search_yt(q: str, live: bool = True):
     if not q:
         return {"results": []}
     
-    # 1. Fetch current playlist and banned list to filter out
+    # 1. Fetch current playlist, banned list, and history list to filter out
     playlist_ids = set()
     try:
         with open("playlist.pl", "r") as f:
@@ -207,6 +230,16 @@ async def search_yt(q: str, live: bool = True):
             if content:
                 banned_data = json.loads(content)
                 banned_ids = {item.get("id") for item in banned_data if isinstance(item, dict) and item.get("id")}
+    except Exception:
+        pass
+
+    history_ids = set()
+    try:
+        with open("history.pl", "r") as f:
+            content = f.read().strip()
+            if content:
+                history_data = json.loads(content)
+                history_ids = {item.get("id") for item in history_data if isinstance(item, dict) and item.get("id")}
     except Exception:
         pass
 
@@ -242,7 +275,7 @@ async def search_yt(q: str, live: bool = True):
         data = json.loads(match.group(1))
         contents = data['contents']['twoColumnSearchResultsRenderer']['primaryContents']['sectionListRenderer']['contents']
         
-        continuation_token = parse_search_items(contents, results, playlist_ids, banned_ids, live)
+        continuation_token = parse_search_items(contents, results, playlist_ids, banned_ids, history_ids, live)
         
         # Subsequent pages logic using InnerTube continuation
         page = 2
@@ -284,7 +317,7 @@ async def search_yt(q: str, live: bool = True):
                         video_renderer = item.get('videoRenderer', {})
                         if video_renderer:
                             video_id = video_renderer.get('videoId')
-                            if video_id and video_id not in playlist_ids and video_id not in banned_ids:
+                            if video_id and video_id not in playlist_ids and video_id not in banned_ids and video_id not in history_ids:
                                 title = ""
                                 title_runs = video_renderer.get('title', {}).get('runs', [])
                                 if title_runs:

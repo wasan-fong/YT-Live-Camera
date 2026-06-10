@@ -350,5 +350,55 @@
         "zoom": 1,
         "panX": 0,
         "panY": 0
+    },
+    {
+        "id": "irXHQTPI_tQ",
+        "name": "\ud83d\udd34 PHILIPPINES Live camera Lyn's Samgyup Restaurant, Davao City #philippines",
+        "group": "JAZBAZ"
+    },
+    {
+        "id": "bCdlVbhsVo8",
+        "name": "\ud83d\udd34 PHILIPPINES Live cam Inside New Agdao Farmers Market cam 1, Davao City #philippines #livestream",
+        "group": "JAZBAZ"
+    },
+    {
+        "id": "0OS2y7CpK68",
+        "name": "\ud83d\udd34 Philippines Live camera Street View, Davao City,  F Bangoy Street towards Lapu Lapu",
+        "group": "JAZBAZ"
+    },
+    {
+        "id": "Im9AIw7obEQ",
+        "name": "\ud83d\udd34 PHILIPPINES Live cam Inside New Agdao Farmers Market cam 2, Davao City #philippines #livestream",
+        "group": "JAZBAZ"
+    },
+    {
+        "id": "Sgt05K7f9TA",
+        "name": "\ud83d\udd34 PHILIPPINES Live camera Lyn's Samgyup Staff, Davao City #philippines",
+        "group": "JAZBAZ"
+    },
+    {
+        "id": "vnniDOWtM3Q",
+        "name": "\ud83d\udd34 PHILIPPINES Live camera outside Lyn's Sisig Beef BBQ, Davao City #philippines",
+        "group": "JAZBAZ"
+    },
+    {
+        "id": "NEoP0H10_VA",
+        "name": "\ud83d\udd34PHILIPPINES Live camera Outside Lodi's Eatery, Agdao, Davao City #philippines",
+        "group": "JAZBAZ"
+    },
+    {
+        "id": "YWs0HMRVCBY",
+        "name": "LIVE Fort Lauderdale Beach Bar Cam \u2013 Elbo Room Atmosphere & Live Music | ElboTV",
+        "group": "ELBO ROOM"
+    },
+    {
+        "id": "wVNt3l657X0",
+        "name": "Watch Live from Fort Lauderdale's Elbo Room",
+        "group": "ELBO ROOM"
+    },
+    {
+        "id": "bM0GplM_vPY",
+        "name": "Live from Elbo Room Patio Fort Lauderdale: Sunrise Fishing Tips & Tropical Cocktail",
+        "group": "ELBO ROOM"
     }
 ]
