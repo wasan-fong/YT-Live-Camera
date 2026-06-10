@@ -270,5 +270,84 @@
         "id": "K8QQ5sWmGbY",
         "name": "Patong, Thailand \ud83c\uddf9\ud83c\udded Evening Vibes Walking Tour \u2014 Beach & Bangla Road",
         "group": "PHUKET"
+    },
+    {
+        "id": "WSCyQJH_5TU",
+        "name": "\ud83d\udd34 PHILIPPINES Live camera Restaurant Servery, Lyn's Sisig Beef BBQ, Davao City #philippines",
+        "group": "JAZBAZ"
+    },
+    {
+        "id": "QQBVEf6B2r0",
+        "name": "\ud83d\udd34 Philippines Live camera Jet Wash area and Internet Caf\u00e9, Agdao, Davao City #philippines",
+        "group": "JAZBAZ"
+    },
+    {
+        "id": "U_C_iQn6cRY",
+        "name": "Maria's Cam 10 ROSEMARY STREET., AGDAO DAVAO CITY PHILIPPINES  #philippines #davaocity",
+        "group": "MARIA DESEO"
+    },
+    {
+        "id": "YYRhnfv742U",
+        "name": "BOY SAYONG ( CAM 3 ) INSIDE AGDAO PUBLIC MARKET DAVAO CITY ( ROSE STORE )",
+        "group": "MARIA DESEO"
+    },
+    {
+        "id": "kPRH1KsY3uo",
+        "name": "Inside Maria's Living Room 24/7 #philippines #davaocity",
+        "group": "MARIA DESEO"
+    },
+    {
+        "id": "gM6vYZrTubo",
+        "name": "Maria's Store CAM 6-A,  OTHER ANGLE, AGDAO DAVAO CITY PHILLIPINES #philippines #davaocity",
+        "group": "MARIA DESEO"
+    },
+    {
+        "id": "B2cFqhyIwI0",
+        "name": "Maria's Cam 4a Rachel Store #philippines #davaocity",
+        "group": "MARIA DESEO"
+    },
+    {
+        "id": "lsLkrwlimbE",
+        "name": "Maria's Cam 9 ROSEMARY STREET AGDAO DAVAO CITY, PHILLIPPINES  #philippines #davaocity",
+        "group": "MARIA DESEO"
+    },
+    {
+        "id": "5HX_7sFSX98",
+        "name": "Maria's Cam 2 OUTSIDE  STORE AGDAO PUBLIC MARKET DAVAO CITY PHILIPPINES  #philippines #davaocity",
+        "group": "MARIA DESEO"
+    },
+    {
+        "id": "-3a_6XzwHas",
+        "name": "Maria's Cam1a Outside Store  #philippines #davaocity",
+        "group": "MARIA DESEO"
+    },
+    {
+        "id": "P5WnSGXJpkM",
+        "name": "Maria's Cam 1 STORE AGDAO  PUBLIC MARKET DAVAO CITY PHILIPPINES  #philippines #davaocity",
+        "group": "MARIA DESEO"
+    },
+    {
+        "id": "u8CbGedbI08",
+        "name": "EDGE CAM 1 AGDAO LIVE CAM, DAVAO CITY PHILIPPINES",
+        "group": "MARIA DESEO"
+    },
+    {
+        "id": "KFWHAT9N3Us",
+        "name": "\ud83d\udd34 PHILIPPINES Live camera W Aquino Street Market Area , Agdao, Davao City #philippines",
+        "group": "JAZBAZ"
+    },
+    {
+        "id": "Q7JY7sgxI7o",
+        "name": "\ud83d\udd34 Philippines Live outside house Cam1 Agdao Davao City #davaocity #philippines",
+        "group": "JAZBAZ"
+    },
+    {
+        "id": "MR-sjpBQ6bY",
+        "name": "True Digital Park Bangkok",
+        "group": "TRUE",
+        "starred": true,
+        "zoom": 1,
+        "panX": 0,
+        "panY": 0
     }
 ]

@@ -491,8 +491,8 @@
 
             if (programVideoId) {
                 pgmMon.classList.add('active-tally');
-                const item = playlist.find(v => v.id === programVideoId);
-                pgmName.textContent = item ? `${item.name || item.id}` : programVideoId;
+                const item = playlist.find(v => v.id === programVideoId) || lastSearchResults.find(v => v.id === programVideoId);
+                pgmName.textContent = item ? `${item.name || item.title || item.id}` : programVideoId;
             } else {
                 pgmMon.classList.remove('active-tally');
                 pgmName.textContent = 'NONE';
@@ -952,16 +952,6 @@
                 alert("Please select a camera on PVW first to execute transition.");
                 return;
             }
-            
-            const pvwItem = playlist.find(v => v.id === previewVideoId);
-            if (!pvwItem) {
-                alert("Please add this camera to your playlist first to transition it live.");
-                return;
-            }
-            if (!pvwItem.starred) {
-                alert("Please star this camera in your playlist first to play it on the Dashboard.");
-                return;
-            }
 
             const temp = programVideoId;
             programVideoId = previewVideoId;
@@ -981,16 +971,6 @@
         document.getElementById('auto-btn').onclick = () => {
             if (!previewVideoId) {
                 alert("Please select a camera on PVW first to execute transition.");
-                return;
-            }
-
-            const pvwItem = playlist.find(v => v.id === previewVideoId);
-            if (!pvwItem) {
-                alert("Please add this camera to your playlist first to transition it live.");
-                return;
-            }
-            if (!pvwItem.starred) {
-                alert("Please star this camera in your playlist first to play it on the Dashboard.");
                 return;
             }
             
@@ -1056,15 +1036,6 @@
         function startTBarDrag(e) {
             if (!previewVideoId) {
                 alert("Please select a camera on PVW first to execute manual transition.");
-                return;
-            }
-            const pvwItem = playlist.find(v => v.id === previewVideoId);
-            if (!pvwItem) {
-                alert("Please add this camera to your playlist first to transition it live.");
-                return;
-            }
-            if (!pvwItem.starred) {
-                alert("Please star this camera in your playlist first to play it on the Dashboard.");
                 return;
             }
             isDraggingTBar = true;

@@ -65,19 +65,10 @@ function connectWebSocket() {
                 fetchPlaylist();
             } else if (config.action === 'switch') {
                 if (config.videoId) {
-                    // Only play if video is starred (present in filtered playlist)
-                    if (playlist.some(item => item.id === config.videoId)) {
-                        transitionToVideo(config.videoId, config.transitionType || 'cut', config.duration);
-                    } else {
-                        console.log("Dashboard: Switch ignored because video is not starred.");
-                    }
+                    transitionToVideo(config.videoId, config.transitionType || 'cut', config.duration);
                 }
             } else if (config.action === 'fade_tbar') {
-                if (playlist.some(item => item.id === config.videoId)) {
-                    handleTBarFade(config.videoId, config.value);
-                } else {
-                    console.log("Dashboard: Fade fader ignored because video is not starred.");
-                }
+                handleTBarFade(config.videoId, config.value);
             } else if (config.action === 'fade_complete') {
                 finalizeTBarFade(config.videoId);
             } else if (config.action === 'request_sync') {
@@ -327,6 +318,10 @@ function transitionToVideo(videoId, type = 'cut', duration = 1000) {
     const activeContainer = activePlayerName === 'a' ? containerA : containerB;
     const inactiveContainer = activePlayerName === 'a' ? containerB : containerA;
 
+    // Hide starred warning overlay when a direct switch is forced
+    const noStarredOverlay = document.getElementById('no-starred-overlay');
+    if (noStarredOverlay) noStarredOverlay.style.display = 'none';
+
     const currentLoadedVideo = activePlayerName === 'a' ? loadedVideoA : loadedVideoB;
     if (videoId === currentLoadedVideo) {
         console.log("Dashboard: Video already active on PGM.");
@@ -394,6 +389,10 @@ function transitionToVideo(videoId, type = 'cut', duration = 1000) {
 
 // --- T-Bar Manual Fade Transitions ---
 function handleTBarFade(videoId, value) {
+    // Hide starred warning overlay when manual transition is started
+    const noStarredOverlay = document.getElementById('no-starred-overlay');
+    if (noStarredOverlay) noStarredOverlay.style.display = 'none';
+
     // value is 0.0 to 1.0 (0.0 = Program is active, 1.0 = Preview is active)
     const activeContainer = activePlayerName === 'a' ? containerA : containerB;
     const inactiveContainer = activePlayerName === 'a' ? containerB : containerA;
