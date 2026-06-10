@@ -1,0 +1,1233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YT Live Camera - Switcher Console</title>
+    <!-- Use our premium broadcaster CSS -->
+    <link rel="stylesheet" href="/static/css/console.css">
+    <!-- Font Awesome for clean, premium icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Global JS Error Overlay for Debugging -->
+    <script>
+        window.onerror = function(msg, url, line, col, error) {
+            const errDiv = document.createElement('div');
+            errDiv.style.position = 'fixed';
+            errDiv.style.top = '10px';
+            errDiv.style.left = '10px';
+            errDiv.style.backgroundColor = 'rgba(255, 30, 30, 0.95)';
+            errDiv.style.color = 'white';
+            errDiv.style.padding = '15px';
+            errDiv.style.zIndex = '99999';
+            errDiv.style.fontFamily = 'monospace';
+            errDiv.style.borderRadius = '8px';
+            errDiv.style.border = '2px solid white';
+            errDiv.style.boxShadow = '0 0 20px rgba(0,0,0,0.5)';
+            errDiv.style.fontSize = '12px';
+            errDiv.style.maxWidth = '90vw';
+            errDiv.style.wordBreak = 'break-all';
+            errDiv.innerHTML = `<strong>Console JS Error:</strong> ${msg}<br><strong>File:</strong> ${url}<br><strong>Line:</strong> ${line}:${col}<br><br><strong>Stack:</strong> ${error ? error.stack : 'N/A'}`;
+            document.body.appendChild(errDiv);
+            return false;
+        };
+    </script>
+</head>
+<body>
+    <!-- Top Bar Header -->
+    <header class="switcher-header">
+        <div class="brand-section">
+            <span class="brand-logo"><i class="fa-solid fa-tower-broadcast"></i> ATEM-LIVE</span>
+            <span class="brand-badge">PRO SWITCHER v2.0</span>
+        </div>
+        
+        <!-- Live System Clock (Timecode) -->
+        <div class="timecode-display" id="timecode">00:00:00:00</div>
+        
+        <!-- Search Bar -->
+        <div class="search-bar-container">
+            <i class="fa-solid fa-magnifying-glass search-icon"></i>
+            <input type="text" id="search-input" class="search-input" placeholder="Search Camera, Group, ID...">
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <div class="switcher-workspace">
+        <!-- MONITOR WALL -->
+        <div class="monitor-wall">
+            <!-- PREVIEW (PVW) MONITOR -->
+            <div class="monitor pvw" id="pvw-monitor">
+                <div class="monitor-screen" id="pvw-screen">
+                    <div id="pvw-player"></div>
+                    <div class="monitor-screen-placeholder" id="pvw-placeholder">
+                        <i class="fa-solid fa-tv fa-2x"></i>
+                        <span>NO PREVIEW SELECTED</span>
+                    </div>
+                </div>
+                <div class="tally-label">
+                    <span class="tally-text"><i class="fa-solid fa-circle"></i> PREVIEW</span>
+                    <span class="cam-name-tag" id="pvw-cam-name">NONE</span>
+                </div>
+            </div>
+
+            <!-- TRANSITION CONTROLS (T-BAR) -->
+            <div class="transition-center">
+                <button class="trans-btn btn-cut" id="cut-btn" title="Instant Cut Switch">CUT</button>
+                
+                <!-- Interactive Visual T-Bar -->
+                <div class="tbar-container" id="tbar-container">
+                    <span class="tbar-label">MIX</span>
+                    <div class="tbar-track" id="tbar-track">
+                        <div class="tbar-progress" id="tbar-progress"></div>
+                        <div class="tbar-handle" id="tbar-handle"></div>
+                    </div>
+                    <span class="tbar-label">WIPE</span>
+                </div>
+                
+                <button class="trans-btn btn-auto" id="auto-btn" title="Timed Auto Mix Transition">AUTO</button>
+            </div>
+
+            <!-- PROGRAM (PGM) MONITOR -->
+            <div class="monitor pgm" id="pgm-monitor">
+                <div class="monitor-screen" id="pgm-screen">
+                    <div id="pgm-player"></div>
+                    <div class="monitor-screen-placeholder" id="pgm-placeholder">
+                        <i class="fa-solid fa-circle-play fa-2x" style="color: var(--color-pgm);"></i>
+                        <span>PGM OUT OFFLINE</span>
+                    </div>
+                </div>
+                <div class="tally-label">
+                    <span class="tally-text"><i class="fa-solid fa-circle"></i> PROGRAM</span>
+                    <span class="cam-name-tag" id="pgm-cam-name">NONE</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- DUAL COLUMN CONTROL ZONE -->
+        <div class="control-zone">
+            <!-- COLUMN 1: YOUTUBE SEARCH & DISCOVERY -->
+            <div class="control-panel search-panel">
+                <div class="panel-header">
+                    <h3><i class="fa-brands fa-youtube" style="color: var(--color-pgm);"></i> YOUTUBE SEARCH</h3>
+                    <div class="search-filters">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="yt-search-live" checked> Live Streams Only
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="search-form-row">
+                    <input type="text" id="yt-search-query" placeholder="Search YouTube live feeds, cameras...">
+                    <button class="btn-primary" id="yt-search-btn"><i class="fa-solid fa-magnifying-glass"></i> SEARCH</button>
+                </div>
+                
+                <div class="search-settings-row">
+                    <label>Default Group:</label>
+                    <input type="text" id="yt-default-group" value="YOUTUBE" placeholder="e.g. CITIES">
+                    
+                    <!-- Auto Rate Select -->
+                    <label style="margin-left:auto;">Auto Rate:</label>
+                    <select id="auto-rate-select" style="padding: 2px 4px; background: var(--bg-dark); border: 1px solid var(--border-color); color: var(--text-main); border-radius: 4px;">
+                        <option value="400">0.4s Fast</option>
+                        <option value="800" selected>0.8s Normal</option>
+                        <option value="1500">1.5s Slow</option>
+                        <option value="3000">3.0s Long</option>
+                    </select>
+                </div>
+
+                <div class="search-results-list" id="yt-search-results">
+                    <div class="panel-placeholder">
+                        <i class="fa-solid fa-magnifying-glass fa-2x"></i>
+                        <p>Search YouTube to find camera feeds and add them to your playlist.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- COLUMN 2: PLAYLIST MANAGER -->
+            <div class="control-panel playlist-panel">
+                <div class="panel-header">
+                    <h3><i class="fa-solid fa-list-ul" style="color: var(--color-blue);"></i> PLAYLIST MANAGER</h3>
+                    
+                    <!-- Quick System Actions Toolbar -->
+                    <div class="header-actions">
+                        <button class="icon-btn" id="fetch-all-titles-btn" title="Download names from YouTube"><i class="fa-solid fa-tags"></i></button>
+                        <button class="icon-btn" id="export-playlist-btn" title="Export playlist as JSON"><i class="fa-solid fa-file-export"></i></button>
+                        <button class="icon-btn" id="import-playlist-trigger" title="Upload playlist from JSON"><i class="fa-solid fa-file-import"></i></button>
+                        <button class="icon-btn" id="restore-backup-btn" title="Restore Backup Playlist"><i class="fa-solid fa-clock-rotate-left"></i></button>
+                        <button class="icon-btn btn-danger" id="clear-all-btn" title="Clear All Playlist Items"><i class="fa-solid fa-trash-can"></i></button>
+                    </div>
+                    <input type="file" id="import-playlist-file" style="display: none;" accept=".json,.pl">
+                </div>
+
+                <div class="playlist-items-list" id="playlist-items">
+                    <div class="panel-placeholder">
+                        <i class="fa-solid fa-list-ul fa-2x"></i>
+                        <p>Your playlist is empty. Search and add some cameras above!</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- EDIT MODAL OVERLAY -->
+    <div class="modal-overlay" id="edit-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-pen"></i> EDIT SWITCHER INPUT</h3>
+                <button class="modal-close" id="edit-modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Video ID</label>
+                    <input type="text" id="edit-video-id" disabled style="opacity: 0.6;">
+                </div>
+                <div class="form-group">
+                    <label>Camera Name</label>
+                    <input type="text" id="edit-video-name" placeholder="Name">
+                </div>
+                <div class="form-group">
+                    <label>Group / Category</label>
+                    <input type="text" id="edit-video-group" placeholder="e.g. CITIES, BEACHES">
+                </div>
+                <div class="form-group">
+                    <label>Digital Zoom (DVE)</label>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <input type="range" id="edit-video-zoom" min="1.0" max="4.0" step="0.05" value="1.0" style="flex: 1;">
+                        <span id="edit-video-zoom-val" style="width: 50px; font-family: monospace; text-align: right;">1.00x</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Pan X (Horizontal)</label>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <input type="range" id="edit-video-panx" min="-100" max="100" step="1" value="0" style="flex: 1;">
+                        <span id="edit-video-panx-val" style="width: 50px; font-family: monospace; text-align: right;">0%</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Pan Y (Vertical)</label>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <input type="range" id="edit-video-pany" min="-100" max="100" step="1" value="0" style="flex: 1;">
+                        <span id="edit-video-pany-val" style="width: 50px; font-family: monospace; text-align: right;">0%</span>
+                    </div>
+                </div>
+                <button class="btn-secondary" id="edit-reset-dve-btn" style="margin-top: 10px; width: 100%; font-size: 0.8rem; padding: 8px; border: 1px dashed rgba(255,255,255,0.2);">RESET ZOOM/PAN</button>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" id="edit-cancel-btn">CANCEL</button>
+                <button class="btn-primary" id="edit-update-btn">UPDATE INPUT</button>
+            </div>
+        </div>
+    </div>
+    </div>
+
+    <!-- YouTube Iframe API Script -->
+    <script src="https://www.youtube.com/iframe_api"></script>
+    
+    <!-- Switcher Logic -->
+    <script>
+        // --- Web Clock & Timecode ---
+        function updateTimecode() {
+            const el = document.getElementById('timecode');
+            if (!el) return;
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            
+            // Calculate a fake broadcast frame counter based on milliseconds (25 fps)
+            const frames = String(Math.floor((now.getMilliseconds() / 1000) * 25)).padStart(2, '0');
+            el.textContent = `${hours}:${minutes}:${seconds}:${frames}`;
+        }
+        setInterval(updateTimecode, 40);
+
+        // --- WebSocket Communication ---
+        let socket;
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            socket = new WebSocket(`${protocol}//${window.location.host}/ws`);
+            
+            socket.onopen = () => {
+                console.log("Console: WebSocket Connected");
+                // Request current state from dashboard
+                sendCommand({ action: 'request_sync' });
+            };
+            
+            socket.onmessage = (event) => {
+                try {
+                    const msg = JSON.parse(event.data);
+                    console.log("Console: Command Received:", msg);
+                    
+                    if (msg.action === 'sync_state' || msg.action === 'sync_active') {
+                        if (msg.pgmVideoId && msg.pgmVideoId !== programVideoId) {
+                            programVideoId = msg.pgmVideoId;
+                            // If preview is matching the new program, clear it or swap
+                            if (previewVideoId === programVideoId) {
+                                previewVideoId = '';
+                            }
+                            syncMonitorPlayers();
+                            renderSwitcherUI();
+                        }
+                    } else if (msg.action === 'refresh_playlist') {
+                        loadPlaylist();
+                    }
+                } catch(e) {
+                    console.error("Console: Error processing message", e);
+                }
+            };
+            
+            socket.onclose = () => {
+                console.log("Console: WebSocket Closed. Reconnecting...");
+                setTimeout(connectWebSocket, 3000);
+            };
+            socket.onerror = (err) => console.error("Console: WebSocket Error", err);
+        }
+        connectWebSocket();
+
+        const bc = new BroadcastChannel('dashboard_control');
+        bc.onmessage = (event) => {
+            const msg = event.data;
+            if (msg.action === 'sync_state' || msg.action === 'sync_active') {
+                if (msg.pgmVideoId && msg.pgmVideoId !== programVideoId) {
+                    programVideoId = msg.pgmVideoId;
+                    if (previewVideoId === programVideoId) previewVideoId = '';
+                    syncMonitorPlayers();
+                    renderSwitcherUI();
+                }
+            } else if (msg.action === 'refresh_playlist') {
+                loadPlaylist();
+            }
+        };
+
+        function sendCommand(data) {
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify(data));
+            }
+            bc.postMessage(data);
+        }
+
+        // --- System State ---
+        let playlist = [];
+        let programVideoId = '';
+        let previewVideoId = '';
+        let searchQuery = '';
+        
+        let pgmPlayer = null;
+        let pvwPlayer = null;
+        let pgmPlayerReady = false;
+        let pvwPlayerReady = false;
+        
+        let editingVideoId = null;
+        let originalZoom = 1.0;
+        let originalPanX = 0;
+        let originalPanY = 0;
+
+        // --- Presets Data ---
+        const PRESETS = {
+            default: [
+                { id: "8H3nRCFVR6Y", name: "Tokyo Shibuya Crossing Live", group: "CITIES" },
+                { id: "4qyZLflp-sI", name: "New York Times Square Live", group: "CITIES" },
+                { id: "M3EYAY2MftI", name: "London Abbey Road Live", group: "CITIES" },
+                { id: "r8N6IsoIkTk", name: "Venice Canal Grand Bridge", group: "CITIES" },
+                { id: "jPTD2gnZUXg", name: "Earth Orbit view - NASA ISS", group: "SPACE" },
+                { id: "3ATYHKN2hIg", name: "Monterey Bay Aquarium Otter Cam", group: "ANIMALS" },
+                { id: "NqOmHpwMUxs", name: "Seattle Otter Exhibit Live Feed", group: "ANIMALS" },
+                { id: "Dz-VQup0fCg", name: "Severn Valley Train Railway Station", group: "TRAINS" },
+                { id: "QRicd-vzRaI", name: "Cabview Driver Tram Streetcar", group: "TRAINS" }
+            ],
+            cities: [
+                { id: "8H3nRCFVR6Y", name: "Tokyo Shibuya Crossing Live", group: "CITIES" },
+                { id: "4qyZLflp-sI", name: "New York Times Square Live", group: "CITIES" },
+                { id: "M3EYAY2MftI", name: "London Abbey Road Live", group: "CITIES" },
+                { id: "r8N6IsoIkTk", name: "Venice Canal Grand Bridge", group: "CITIES" },
+                { id: "z_Wf0fX6c-c", name: "Seoul City Center Live Cam", group: "CITIES" },
+                { id: "Q71sLS8h9a4", name: "Bangkok Sukhumvit Street View", group: "CITIES" }
+            ],
+            nature: [
+                { id: "jPTD2gnZUXg", name: "Earth View from Space", group: "SPACE" },
+                { id: "3ATYHKN2hIg", name: "Monterey Bay Sea Otters Live", group: "ANIMALS" },
+                { id: "NqOmHpwMUxs", name: "Seattle Aquarium Otter Exhibit", group: "ANIMALS" },
+                { id: "Fw9hgttWzIg", name: "Lamai Beach Koh Samui Live", group: "BEACH" },
+                { id: "SQtbYLhcC4I", name: "Koh Nang Yuan Island Beach Live", group: "BEACH" }
+            ],
+            trains: [
+                { id: "Dz-VQup0fCg", name: "Severn Valley Railway Station Live", group: "TRAINS" },
+                { id: "tAWFO8_O_7M", name: "Bergen Line Railway Cabview Norway", group: "TRAINS" },
+                { id: "_eArnSLGhSo", name: "Ashland Virginia PTZ Train Cam", group: "TRAINS" },
+                { id: "QRicd-vzRaI", name: "Tram Cabview Driver Perspective", group: "TRAINS" }
+            ]
+        };
+
+        // --- Load & Save Playlist ---
+        async function loadPlaylist() {
+            try {
+                const res = await fetch('/playlist');
+                const data = await res.json();
+                playlist = data.playlist;
+                
+                // Initialize default program/preview ids if not set
+                if (playlist.length > 0) {
+                    if (!programVideoId) programVideoId = playlist[0].id;
+                    if (!previewVideoId && playlist.length > 1) previewVideoId = playlist[1].id;
+                }
+                
+                renderSwitcherUI();
+                syncMonitorPlayers();
+            } catch(e) {
+                console.error("Console: Error loading playlist", e);
+            }
+        }
+
+        async function savePlaylist() {
+            await fetch('/playlist', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ playlist: playlist })
+            });
+            sendCommand({ action: 'refresh_playlist' });
+        }
+
+        // --- YouTube Embed Players ---
+        function onYouTubeIframeAPIReady() {
+            console.log("Console: YouTube API Ready, building monitors...");
+            
+            // Build PVW player
+            pvwPlayer = new YT.Player('pvw-player', {
+                height: '100%',
+                width: '100%',
+                videoId: '',
+                playerVars: { 'autoplay': 0, 'mute': 1, 'controls': 1 },
+                events: {
+                    'onReady': () => {
+                        pvwPlayerReady = true;
+                        document.getElementById('pvw-placeholder').style.display = 'none';
+                        syncMonitorPlayers();
+                    }
+                }
+            });
+
+            // Build PGM player
+            pgmPlayer = new YT.Player('pgm-player', {
+                height: '100%',
+                width: '100%',
+                videoId: '',
+                playerVars: { 'autoplay': 0, 'mute': 1, 'controls': 1 },
+                events: {
+                    'onReady': () => {
+                        pgmPlayerReady = true;
+                        document.getElementById('pgm-placeholder').style.display = 'none';
+                        syncMonitorPlayers();
+                    }
+                }
+            });
+
+            loadPlaylist();
+        }
+
+        function syncMonitorPlayers() {
+            if (pvwPlayerReady && pvwPlayer && pvwPlayer.loadVideoById) {
+                if (previewVideoId) {
+                    pvwPlayer.loadVideoById({ videoId: previewVideoId });
+                    pvwPlayer.mute();
+                    document.getElementById('pvw-placeholder').style.display = 'none';
+                } else {
+                    pvwPlayer.stopVideo();
+                    document.getElementById('pvw-placeholder').style.display = 'flex';
+                }
+            }
+            
+            if (pgmPlayerReady && pgmPlayer && pgmPlayer.loadVideoById) {
+                if (programVideoId) {
+                    pgmPlayer.loadVideoById({ videoId: programVideoId });
+                    pgmPlayer.mute();
+                    document.getElementById('pgm-placeholder').style.display = 'none';
+                } else {
+                    pgmPlayer.stopVideo();
+                    document.getElementById('pgm-placeholder').style.display = 'flex';
+                }
+            }
+
+            // Apply zoom/pan transforms to monitors
+            const pvwEl = document.getElementById('pvw-player');
+            if (pvwEl) {
+                const pvwItem = playlist.find(v => v.id === previewVideoId);
+                if (pvwItem) {
+                    const z = pvwItem.zoom || 1.0;
+                    const px = pvwItem.panX || 0;
+                    const py = pvwItem.panY || 0;
+                    pvwEl.style.transform = `scale(${z}) translate(${px}%, ${py}%)`;
+                } else {
+                    pvwEl.style.transform = 'none';
+                }
+            }
+
+            const pgmEl = document.getElementById('pgm-player');
+            if (pgmEl) {
+                const pgmItem = playlist.find(v => v.id === programVideoId);
+                if (pgmItem) {
+                    const z = pgmItem.zoom || 1.0;
+                    const px = pgmItem.panX || 0;
+                    const py = pgmItem.panY || 0;
+                    pgmEl.style.transform = `scale(${z}) translate(${px}%, ${py}%)`;
+                } else {
+                    pgmEl.style.transform = 'none';
+                }
+            }
+
+            // Update monitor tally lighting and names
+            const pvwMon = document.getElementById('pvw-monitor');
+            const pgmMon = document.getElementById('pgm-monitor');
+            const pvwName = document.getElementById('pvw-cam-name');
+            const pgmName = document.getElementById('pgm-cam-name');
+
+            if (previewVideoId) {
+                pvwMon.classList.add('active-tally');
+                const item = playlist.find(v => v.id === previewVideoId);
+                pvwName.textContent = item ? `${item.name || item.id}` : previewVideoId;
+            } else {
+                pvwMon.classList.remove('active-tally');
+                pvwName.textContent = 'NONE';
+            }
+
+            if (programVideoId) {
+                pgmMon.classList.add('active-tally');
+                const item = playlist.find(v => v.id === programVideoId);
+                pgmName.textContent = item ? `${item.name || item.id}` : programVideoId;
+            } else {
+                pgmMon.classList.remove('active-tally');
+                pgmName.textContent = 'NONE';
+            }
+        }
+
+        // --- Search Feature ---
+        document.getElementById('search-input').oninput = (e) => {
+            searchQuery = e.target.value.trim();
+            renderSwitcherUI();
+        };
+
+        // --- YouTube Search & Edit Logic ---
+        async function fetchYouTubeTitle(id) {
+            try {
+                const res = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${id}&format=json`);
+                if (!res.ok) return null;
+                const data = await res.json();
+                return data.title;
+            } catch (e) {
+                console.error("Error fetching title:", e);
+                return null;
+            }
+        }
+
+        const ytSearchBtn = document.getElementById('yt-search-btn');
+        const ytSearchQuery = document.getElementById('yt-search-query');
+        const ytSearchLive = document.getElementById('yt-search-live');
+        const ytSearchResults = document.getElementById('yt-search-results');
+        const ytDefaultGroup = document.getElementById('yt-default-group');
+
+        async function performYoutubeSearch() {
+            const query = ytSearchQuery.value.trim();
+            if (!query) return;
+
+            ytSearchBtn.disabled = true;
+            ytSearchBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+            ytSearchResults.innerHTML = '<div style="text-align:center; padding: 15px; color: var(--text-muted); font-size: 0.8rem; width: 100%;"><i class="fa-solid fa-spinner fa-spin"></i> Searching YouTube...</div>';
+
+            try {
+                const liveOnly = ytSearchLive.checked;
+                const response = await fetch(`/api/search?q=${encodeURIComponent(query)}&live=${liveOnly}`);
+                const data = await response.json();
+                
+                renderSearchResults(data.results || []);
+            } catch(e) {
+                console.error("Search error:", e);
+                ytSearchResults.innerHTML = '<div style="text-align:center; padding: 15px; color: var(--color-pgm); font-size: 0.8rem; width: 100%;">Search failed. Please try again.</div>';
+            } finally {
+                ytSearchBtn.disabled = false;
+                ytSearchBtn.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i> SEARCH';
+            }
+        }
+
+        ytSearchBtn.onclick = performYoutubeSearch;
+        ytSearchQuery.onkeydown = (e) => {
+            if (e.key === 'Enter') {
+                performYoutubeSearch();
+            }
+        };
+
+        function renderSearchResults(results) {
+            ytSearchResults.innerHTML = '';
+            if (results.length === 0) {
+                ytSearchResults.innerHTML = '<div style="text-align:center; padding: 15px; color: var(--text-muted); font-size: 0.8rem; width: 100%;">No results found.</div>';
+                return;
+            }
+
+            results.forEach(video => {
+                const isAlreadyAdded = playlist.some(item => item.id === video.id);
+                
+                const card = document.createElement('div');
+                card.className = 'yt-result-card';
+
+                const thumb = document.createElement('div');
+                thumb.className = 'yt-result-thumb';
+                thumb.style.backgroundImage = `url('${video.thumbnail || "https://img.youtube.com/vi/" + video.id + "/mqdefault.jpg"}')`;
+
+                const info = document.createElement('div');
+                info.className = 'yt-result-info';
+
+                const title = document.createElement('div');
+                title.className = 'yt-result-title';
+                title.textContent = video.title || 'Untitled Video';
+                title.title = video.title;
+
+                const channel = document.createElement('div');
+                channel.className = 'yt-result-channel';
+                channel.textContent = video.channel || 'Unknown Channel';
+
+                info.appendChild(title);
+                info.appendChild(channel);
+
+                const addBtn = document.createElement('button');
+                addBtn.className = `yt-result-add-btn ${isAlreadyAdded ? 'added' : ''}`;
+                addBtn.innerHTML = isAlreadyAdded ? '<i class="fa-solid fa-check"></i>' : '<i class="fa-solid fa-plus"></i>';
+                addBtn.disabled = isAlreadyAdded;
+                addBtn.title = isAlreadyAdded ? 'Already added' : 'Add to playlist';
+
+                addBtn.onclick = async () => {
+                    if (playlist.some(item => item.id === video.id)) return;
+                    
+                    const group = ytDefaultGroup.value.trim().toUpperCase() || 'YOUTUBE';
+                    playlist.push({
+                        id: video.id,
+                        name: video.title || `YouTube Cam Feed`,
+                        group: group
+                    });
+                    
+                    if (playlist.length === 1) {
+                        programVideoId = video.id;
+                    } else if (playlist.length === 2 && !previewVideoId) {
+                        previewVideoId = video.id;
+                    }
+
+                    await savePlaylist();
+                    renderSwitcherUI();
+                    syncMonitorPlayers();
+
+                    addBtn.className = 'yt-result-add-btn added';
+                    addBtn.innerHTML = '<i class="fa-solid fa-check"></i>';
+                    addBtn.disabled = true;
+                    addBtn.title = 'Already added';
+                };
+
+                card.appendChild(thumb);
+                card.appendChild(info);
+                card.appendChild(addBtn);
+                ytSearchResults.appendChild(card);
+            });
+        }
+
+        // --- Render Switcher UI (Redesigned Playlist Items Manager) ---
+        function renderSwitcherUI() {
+            const grid = document.getElementById('playlist-items');
+            grid.innerHTML = '';
+
+            // Filter playlist based on the top bar search input
+            const filteredPlaylist = playlist.filter(item => {
+                const search = searchQuery.toLowerCase();
+                const name = (item.name || '').toLowerCase();
+                const group = (item.group || '').toLowerCase();
+                const id = (item.id || '').toLowerCase();
+                return name.includes(search) || group.includes(search) || id.includes(search);
+            });
+
+            if (filteredPlaylist.length === 0) {
+                grid.innerHTML = `<div class="panel-placeholder">
+                    <i class="fa-solid fa-list-ul fa-2x"></i>
+                    <p>${playlist.length === 0 ? 'Your playlist is empty. Search and add some cameras above!' : 'No playlist items match your filter.'}</p>
+                </div>`;
+                return;
+            }
+
+            filteredPlaylist.forEach((item) => {
+                const globalIndex = playlist.indexOf(item);
+                
+                const card = document.createElement('div');
+                card.className = `playlist-item-card ${item.id === programVideoId ? 'active-pgm' : ''} ${item.id === previewVideoId ? 'active-pvw' : ''}`;
+                card.draggable = true;
+
+                // Drag handle
+                const dragHandle = document.createElement('div');
+                dragHandle.className = 'drag-handle';
+                dragHandle.innerHTML = '<i class="fa-solid fa-grip-vertical"></i>';
+
+                // Thumbnail
+                const thumb = document.createElement('div');
+                thumb.className = 'playlist-item-thumb';
+                thumb.style.backgroundImage = `url('https://img.youtube.com/vi/${item.id}/mqdefault.jpg')`;
+
+                // Info
+                const info = document.createElement('div');
+                info.className = 'playlist-item-info';
+
+                const title = document.createElement('div');
+                title.className = 'playlist-item-title';
+                if (item.starred) {
+                    title.innerHTML = `<i class="fa-solid fa-star" style="color: #ffca28; margin-right: 5px;" title="Starred Camera"></i> ${item.name || item.id}`;
+                } else {
+                    title.textContent = item.name || item.id;
+                }
+                title.title = item.name || item.id;
+
+                const meta = document.createElement('div');
+                meta.className = 'playlist-item-meta';
+
+                const camNumber = document.createElement('span');
+                camNumber.className = 'cam-number';
+                camNumber.textContent = `CAM ${globalIndex + 1}`;
+
+                const groupBadge = document.createElement('span');
+                groupBadge.className = 'group-badge';
+                groupBadge.textContent = item.group || 'UNGROUPED';
+
+                meta.appendChild(camNumber);
+                meta.appendChild(groupBadge);
+                info.appendChild(title);
+                info.appendChild(meta);
+
+                // Actions row
+                const actions = document.createElement('div');
+                actions.className = 'playlist-item-actions';
+
+                // PVW button
+                const btnPvw = document.createElement('button');
+                btnPvw.className = `tally-btn tally-btn-pvw ${item.id === previewVideoId ? 'active' : ''}`;
+                btnPvw.textContent = 'PVW';
+                btnPvw.onclick = () => selectPreview(item.id);
+
+                // PGM button
+                const btnPgm = document.createElement('button');
+                btnPgm.className = `tally-btn tally-btn-pgm ${item.id === programVideoId ? 'active' : ''}`;
+                btnPgm.textContent = 'PGM';
+                btnPgm.onclick = () => selectProgramDirect(item.id);
+
+                // Star button
+                const btnStar = document.createElement('button');
+                btnStar.className = `action-btn-circle star-btn ${item.starred ? 'active' : ''}`;
+                btnStar.innerHTML = item.starred ? '<i class="fa-solid fa-star" style="color: #ffca28;"></i>' : '<i class="fa-regular fa-star"></i>';
+                btnStar.title = item.starred ? 'Unstar camera' : 'Star camera';
+                btnStar.onclick = async (e) => {
+                    e.stopPropagation();
+                    item.starred = !item.starred;
+                    await savePlaylist();
+                    renderSwitcherUI();
+                };
+
+                // Edit button
+                const btnEdit = document.createElement('button');
+                btnEdit.className = 'action-btn-circle';
+                btnEdit.innerHTML = '<i class="fa-solid fa-pen"></i>';
+                btnEdit.title = 'Edit Title/Group';
+                btnEdit.onclick = () => startEdit(item);
+
+                // Delete button
+                const btnDel = document.createElement('button');
+                btnDel.className = 'action-btn-circle delete';
+                btnDel.innerHTML = '<i class="fa-solid fa-trash"></i>';
+                btnDel.title = 'Remove Camera';
+                btnDel.onclick = () => deleteVideo(item.id);
+
+                actions.appendChild(btnPvw);
+                actions.appendChild(btnPgm);
+                actions.appendChild(btnStar);
+                actions.appendChild(btnEdit);
+                actions.appendChild(btnDel);
+
+                card.appendChild(dragHandle);
+                card.appendChild(thumb);
+                card.appendChild(info);
+                card.appendChild(actions);
+
+                // HTML5 Drag and Drop Sorting Handlers
+                card.ondragstart = (e) => {
+                    e.dataTransfer.setData('text/plain', item.id);
+                    card.style.opacity = '0.5';
+                };
+                card.ondragend = () => {
+                    card.style.opacity = '1';
+                };
+                card.ondragover = (e) => e.preventDefault();
+                card.ondrop = async (e) => {
+                    e.preventDefault();
+                    const draggedId = e.dataTransfer.getData('text/plain');
+                    if (draggedId && draggedId !== item.id) {
+                        const draggedIdx = playlist.findIndex(v => v.id === draggedId);
+                        const targetIdx = playlist.findIndex(v => v.id === item.id);
+                        if (draggedIdx !== -1 && targetIdx !== -1) {
+                            const tempItem = playlist[draggedIdx];
+                            playlist.splice(draggedIdx, 1);
+                            playlist.splice(targetIdx, 0, tempItem);
+                            await savePlaylist();
+                            renderSwitcherUI();
+                        }
+                    }
+                };
+
+                grid.appendChild(card);
+            });
+        }
+
+        // --- Edit Modal Handlers ---
+        const editModal = document.getElementById('edit-modal');
+        
+        function startEdit(item) {
+            editingVideoId = item.id;
+            originalZoom = item.zoom || 1.0;
+            originalPanX = item.panX || 0;
+            originalPanY = item.panY || 0;
+
+            document.getElementById('edit-video-id').value = item.id;
+            document.getElementById('edit-video-name').value = item.name || '';
+            document.getElementById('edit-video-group').value = item.group || '';
+            
+            document.getElementById('edit-video-zoom').value = originalZoom;
+            document.getElementById('edit-video-panx').value = originalPanX;
+            document.getElementById('edit-video-pany').value = originalPanY;
+            
+            document.getElementById('edit-video-zoom-val').textContent = `${originalZoom.toFixed(2)}x`;
+            document.getElementById('edit-video-panx-val').textContent = `${originalPanX > 0 ? '+' : ''}${originalPanX}%`;
+            document.getElementById('edit-video-pany-val').textContent = `${originalPanY > 0 ? '+' : ''}${originalPanY}%`;
+
+            editModal.classList.add('show');
+        }
+
+        function closeEditModal() {
+            editingVideoId = null;
+            document.getElementById('edit-video-id').value = '';
+            document.getElementById('edit-video-name').value = '';
+            document.getElementById('edit-video-group').value = '';
+            editModal.classList.remove('show');
+        }
+
+        function cancelEdit() {
+            if (editingVideoId) {
+                // Revert live preview styles back to originals
+                if (editingVideoId === previewVideoId) {
+                    const pvwEl = document.getElementById('pvw-player');
+                    if (pvwEl) pvwEl.style.transform = `scale(${originalZoom}) translate(${originalPanX}%, ${originalPanY}%)`;
+                }
+                if (editingVideoId === programVideoId) {
+                    const pgmEl = document.getElementById('pgm-player');
+                    if (pgmEl) pgmEl.style.transform = `scale(${originalZoom}) translate(${originalPanX}%, ${originalPanY}%)`;
+                    
+                    sendCommand({
+                        action: 'zoom_pan_live',
+                        videoId: editingVideoId,
+                        zoom: originalZoom,
+                        panX: originalPanX,
+                        panY: originalPanY
+                    });
+                }
+            }
+            closeEditModal();
+        }
+
+        document.getElementById('edit-cancel-btn').onclick = cancelEdit;
+        document.getElementById('edit-modal-close').onclick = cancelEdit;
+
+        function updateEditDVEPreview() {
+            const zoom = parseFloat(document.getElementById('edit-video-zoom').value);
+            const panX = parseInt(document.getElementById('edit-video-panx').value);
+            const panY = parseInt(document.getElementById('edit-video-pany').value);
+            
+            document.getElementById('edit-video-zoom-val').textContent = `${zoom.toFixed(2)}x`;
+            document.getElementById('edit-video-panx-val').textContent = `${panX > 0 ? '+' : ''}${panX}%`;
+            document.getElementById('edit-video-pany-val').textContent = `${panY > 0 ? '+' : ''}${panY}%`;
+
+            if (editingVideoId) {
+                // Live update monitor players
+                if (editingVideoId === previewVideoId) {
+                    const pvwEl = document.getElementById('pvw-player');
+                    if (pvwEl) pvwEl.style.transform = `scale(${zoom}) translate(${panX}%, ${panY}%)`;
+                }
+                if (editingVideoId === programVideoId) {
+                    const pgmEl = document.getElementById('pgm-player');
+                    if (pgmEl) pgmEl.style.transform = `scale(${zoom}) translate(${panX}%, ${panY}%)`;
+                    
+                    // Real-time broadcast update to dashboard
+                    sendCommand({
+                        action: 'zoom_pan_live',
+                        videoId: editingVideoId,
+                        zoom: zoom,
+                        panX: panX,
+                        panY: panY
+                    });
+                }
+            }
+        }
+
+        // Bind sliders input events for live preview feedback
+        document.getElementById('edit-video-zoom').oninput = updateEditDVEPreview;
+        document.getElementById('edit-video-panx').oninput = updateEditDVEPreview;
+        document.getElementById('edit-video-pany').oninput = updateEditDVEPreview;
+
+        // Reset DVE button
+        document.getElementById('edit-reset-dve-btn').onclick = () => {
+            document.getElementById('edit-video-zoom').value = 1.0;
+            document.getElementById('edit-video-panx').value = 0;
+            document.getElementById('edit-video-pany').value = 0;
+            updateEditDVEPreview();
+        };
+
+        document.getElementById('edit-update-btn').onclick = async () => {
+            const name = document.getElementById('edit-video-name').value.trim();
+            const group = document.getElementById('edit-video-group').value.trim().toUpperCase() || 'UNGROUPED';
+            const zoom = parseFloat(document.getElementById('edit-video-zoom').value);
+            const panX = parseInt(document.getElementById('edit-video-panx').value);
+            const panY = parseInt(document.getElementById('edit-video-pany').value);
+            
+            if (editingVideoId) {
+                const item = playlist.find(v => v.id === editingVideoId);
+                if (item) {
+                    item.name = name;
+                    item.group = group;
+                    item.zoom = zoom;
+                    item.panX = panX;
+                    item.panY = panY;
+                    
+                    await savePlaylist();
+                    closeEditModal();
+                    renderSwitcherUI();
+                }
+            }
+        };
+
+        // --- Video Switcher Actions ---
+        function selectPreview(id) {
+            if (id === programVideoId) {
+                console.log("Console: PVW cannot be identical to active PGM.");
+                return;
+            }
+            previewVideoId = id;
+            syncMonitorPlayers();
+            renderSwitcherUI();
+        }
+
+        function selectProgramDirect(id) {
+            programVideoId = id;
+            if (previewVideoId === id) previewVideoId = '';
+            
+            sendCommand({
+                action: 'switch',
+                videoId: programVideoId,
+                transitionType: 'cut'
+            });
+
+            syncMonitorPlayers();
+            renderSwitcherUI();
+        }
+
+        // CUT Button Event
+        document.getElementById('cut-btn').onclick = () => {
+            if (!previewVideoId) {
+                alert("Please select a camera on PVW first to execute transition.");
+                return;
+            }
+            const temp = programVideoId;
+            programVideoId = previewVideoId;
+            previewVideoId = temp;
+            
+            sendCommand({
+                action: 'switch',
+                videoId: programVideoId,
+                transitionType: 'cut'
+            });
+
+            syncMonitorPlayers();
+            renderSwitcherUI();
+        };
+
+        // AUTO Button Event
+        document.getElementById('auto-btn').onclick = () => {
+            if (!previewVideoId) {
+                alert("Please select a camera on PVW first to execute transition.");
+                return;
+            }
+            
+            const btn = document.getElementById('auto-btn');
+            btn.classList.add('active');
+            
+            const rate = parseInt(document.getElementById('auto-rate-select').value) || 800;
+            
+            sendCommand({
+                action: 'switch',
+                videoId: previewVideoId,
+                transitionType: 'auto',
+                duration: rate
+            });
+
+            let start = 0;
+            const tbarHandle = document.getElementById('tbar-handle');
+            const tbarProgress = document.getElementById('tbar-progress');
+            
+            const intervalTime = 30;
+            const step = 100 / (rate / intervalTime);
+            
+            const transitionTimer = setInterval(() => {
+                start += step;
+                if (start >= 100) {
+                    start = 100;
+                    clearInterval(transitionTimer);
+                    
+                    const temp = programVideoId;
+                    programVideoId = previewVideoId;
+                    previewVideoId = temp;
+                    
+                    syncMonitorPlayers();
+                    renderSwitcherUI();
+                    
+                    tbarHandle.style.bottom = '0%';
+                    tbarProgress.style.height = '0%';
+                    btn.classList.remove('active');
+                } else {
+                    tbarHandle.style.bottom = `${start}%`;
+                    tbarProgress.style.height = `${start}%`;
+                }
+            }, intervalTime);
+        };
+
+        // --- Draggable T-Bar Mix Slider ---
+        let isDraggingTBar = false;
+        const tbarHandle = document.getElementById('tbar-handle');
+        const tbarTrack = document.getElementById('tbar-track');
+        const tbarProgress = document.getElementById('tbar-progress');
+        
+        tbarHandle.addEventListener('mousedown', startTBarDrag);
+        tbarHandle.addEventListener('touchstart', startTBarDrag, { passive: true });
+        
+        document.addEventListener('mousemove', dragTBar);
+        document.addEventListener('touchmove', dragTBar, { passive: false });
+        
+        document.addEventListener('mouseup', endTBarDrag);
+        document.addEventListener('touchend', endTBarDrag);
+        
+        let startY, startBottomPct;
+        
+        function startTBarDrag(e) {
+            if (!previewVideoId) {
+                alert("Please select a camera on PVW first to execute manual transition.");
+                return;
+            }
+            isDraggingTBar = true;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            startY = clientY;
+            const trackRect = tbarTrack.getBoundingClientRect();
+            const handleRect = tbarHandle.getBoundingClientRect();
+            const currentBottom = trackRect.bottom - handleRect.bottom + (handleRect.height / 2);
+            startBottomPct = (currentBottom / trackRect.height) * 100;
+            if (e.cancelable) e.preventDefault();
+        }
+        
+        function dragTBar(e) {
+            if (!isDraggingTBar) return;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            const trackRect = tbarTrack.getBoundingClientRect();
+            const deltaY = startY - clientY;
+            const deltaPct = (deltaY / trackRect.height) * 100;
+            let newPct = startBottomPct + deltaPct;
+            newPct = Math.max(0, Math.min(100, newPct));
+            
+            tbarHandle.style.bottom = `${newPct}%`;
+            tbarProgress.style.height = `${newPct}%`;
+            
+            sendCommand({
+                action: 'fade_tbar',
+                videoId: previewVideoId,
+                value: newPct / 100
+            });
+            
+            if (e.cancelable) e.preventDefault();
+        }
+        
+        function endTBarDrag() {
+            if (!isDraggingTBar) return;
+            isDraggingTBar = false;
+            
+            const currentPct = parseFloat(tbarHandle.style.bottom) || 0;
+            
+            if (currentPct >= 50) {
+                animateTBarFader(currentPct, 100, () => {
+                    const temp = programVideoId;
+                    programVideoId = previewVideoId;
+                    previewVideoId = temp;
+                    
+                    sendCommand({
+                        action: 'fade_complete',
+                        videoId: programVideoId
+                    });
+                    
+                    syncMonitorPlayers();
+                    renderSwitcherUI();
+                    
+                    tbarHandle.style.bottom = '0%';
+                    tbarProgress.style.height = '0%';
+                });
+            } else {
+                animateTBarFader(currentPct, 0, () => {
+                    tbarHandle.style.bottom = '0%';
+                    tbarProgress.style.height = '0%';
+                    
+                    sendCommand({
+                        action: 'fade_tbar',
+                        videoId: previewVideoId,
+                        value: 0
+                    });
+                });
+            }
+        }
+        
+        function animateTBarFader(from, to, callback) {
+            let current = from;
+            const steps = 8;
+            const stepVal = (to - from) / steps;
+            let currentStep = 0;
+            
+            const animInterval = setInterval(() => {
+                current += stepVal;
+                currentStep++;
+                tbarHandle.style.bottom = `${current}%`;
+                tbarProgress.style.height = `${current}%`;
+                
+                sendCommand({
+                    action: 'fade_tbar',
+                    videoId: previewVideoId,
+                    value: current / 100
+                });
+                
+                if (currentStep >= steps) {
+                    clearInterval(animInterval);
+                    callback();
+                }
+            }, 20);
+        }
+
+        async function deleteVideo(id) {
+            if (confirm(`Remove this camera feed (${id}) from the switcher?`)) {
+                playlist = playlist.filter(v => v.id !== id);
+                
+                if (programVideoId === id) programVideoId = playlist.length > 0 ? playlist[0].id : '';
+                if (previewVideoId === id) previewVideoId = '';
+                
+                if (editingVideoId === id) closeEditModal();
+                await savePlaylist();
+                renderSwitcherUI();
+                syncMonitorPlayers();
+            }
+        }
+
+        // Get Titles for All cameras
+        document.getElementById('fetch-all-titles-btn').onclick = async () => {
+            const btn = document.getElementById('fetch-all-titles-btn');
+            const originalHTML = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+
+            for (let i = 0; i < playlist.length; i++) {
+                const item = playlist[i];
+                if (!item.name || item.name.startsWith('Camera Feed') || item.name === item.id || item.name.startsWith('YouTube Cam Feed')) {
+                    const title = await fetchYouTubeTitle(item.id);
+                    if (title) {
+                        item.name = title;
+                    }
+                }
+            }
+
+            await savePlaylist();
+            renderSwitcherUI();
+            btn.disabled = false;
+            btn.innerHTML = originalHTML;
+        };
+
+        // --- System Restore / Clear Actions ---
+        document.getElementById('clear-all-btn').onclick = async () => {
+            if (confirm("Are you sure you want to CLEAR the entire switcher playlist?")) {
+                playlist = [];
+                programVideoId = '';
+                previewVideoId = '';
+                await savePlaylist();
+                renderSwitcherUI();
+                syncMonitorPlayers();
+            }
+        };
+
+        document.getElementById('restore-backup-btn').onclick = async () => {
+            if (confirm("Restore original backed-up camera list? This will overwrite current changes.")) {
+                try {
+                    const res = await fetch('/playlist/original');
+                    const data = await res.json();
+                    playlist = data.playlist;
+                    if (playlist.length > 0) {
+                        programVideoId = playlist[0].id;
+                        previewVideoId = playlist.length > 1 ? playlist[1].id : '';
+                    }
+                    await savePlaylist();
+                    renderSwitcherUI();
+                    syncMonitorPlayers();
+                } catch(e) {
+                    alert("Error restoring backup file: " + e.message);
+                }
+            }
+        };
+
+        // --- Export / Import JSON ---
+        document.getElementById('export-playlist-btn').onclick = () => {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(playlist, null, 4));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", "switcher_playlist.json");
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        };
+
+        const importTrigger = document.getElementById('import-playlist-trigger');
+        const importFile = document.getElementById('import-playlist-file');
+        
+        importTrigger.onclick = () => importFile.click();
+        
+        importFile.onchange = (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = async (evt) => {
+                try {
+                    const parsed = JSON.parse(evt.target.result);
+                    const list = Array.isArray(parsed) ? parsed : (parsed.playlist || []);
+                    if (list.length === 0) throw new Error("No camera inputs found in file.");
+                    
+                    const validated = list.map(item => {
+                        if (typeof item === 'string') return { id: item, name: '', group: '' };
+                        return {
+                            id: item.id || '',
+                            name: item.name || '',
+                            group: item.group || ''
+                        };
+                    }).filter(item => item.id.length === 11);
+                    
+                    if (validated.length === 0) throw new Error("No valid YouTube 11-digit IDs found.");
+                    
+                    playlist = validated;
+                    programVideoId = playlist[0].id;
+                    previewVideoId = playlist.length > 1 ? playlist[1].id : '';
+                    
+                    await savePlaylist();
+                    renderSwitcherUI();
+                    syncMonitorPlayers();
+                    alert(`Successfully imported ${validated.length} cameras into switcher.`);
+                } catch(err) {
+                    alert("Import Failed: " + err.message);
+                }
+            };
+            reader.readAsText(file);
+        };
+    </script>
+</body>
+</html>
