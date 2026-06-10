@@ -113,11 +113,99 @@ async def update_playlist(data: PlaylistUpdate):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+class BannedUpdate(BaseModel):
+    banned: List[dict]
+
+@app.get("/banned")
+async def get_banned():
+    try:
+        with open("banned.pl", "r") as f:
+            content = f.read().strip()
+            if not content:
+                return {"banned": []}
+            return {"banned": json.loads(content)}
+    except FileNotFoundError:
+        return {"banned": []}
+
+@app.post("/banned")
+async def update_banned(data: BannedUpdate):
+    try:
+        with open("banned.pl", "w") as f:
+            json.dump(data.banned, f, indent=4)
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+def parse_search_items(contents, results, playlist_ids, banned_ids, live):
+    continuation_token = None
+    for section in contents:
+        # Check for itemSectionRenderer
+        item_section = section.get('itemSectionRenderer', {})
+        if item_section:
+            contents_items = item_section.get('contents', [])
+            for item in contents_items:
+                video_renderer = item.get('videoRenderer', {})
+                if video_renderer:
+                    video_id = video_renderer.get('videoId')
+                    if video_id and video_id not in playlist_ids and video_id not in banned_ids:
+                        title = ""
+                        title_runs = video_renderer.get('title', {}).get('runs', [])
+                        if title_runs:
+                            title = title_runs[0].get('text', '')
+                        channel = ""
+                        owner_runs = video_renderer.get('ownerText', {}).get('runs', [])
+                        if owner_runs:
+                            channel = owner_runs[0].get('text', '')
+                        results.append({
+                            "id": video_id,
+                            "title": title,
+                            "thumbnail": f"https://img.youtube.com/vi/{video_id}/mqdefault.jpg",
+                            "channel": channel,
+                            "isLive": live
+                        })
+        # Check for continuationItemRenderer directly in section list
+        continuation_renderer = section.get('continuationItemRenderer', {})
+        if continuation_renderer:
+            continuation_token = continuation_renderer.get('continuationEndpoint', {}).get('continuationCommand', {}).get('token')
+            
+    # Sometimes continuation is inside itemSectionRenderer's contents list
+    for section in contents:
+        item_section = section.get('itemSectionRenderer', {})
+        if item_section:
+            contents_items = item_section.get('contents', [])
+            for item in contents_items:
+                continuation_renderer = item.get('continuationItemRenderer', {})
+                if continuation_renderer:
+                    continuation_token = continuation_renderer.get('continuationEndpoint', {}).get('continuationCommand', {}).get('token')
+                    
+    return continuation_token
+
 @app.get("/api/search")
 async def search_yt(q: str, live: bool = True):
     if not q:
         return {"results": []}
     
+    # 1. Fetch current playlist and banned list to filter out
+    playlist_ids = set()
+    try:
+        with open("playlist.pl", "r") as f:
+            content = f.read().strip()
+            if content:
+                p_data = json.loads(content)
+                playlist_ids = {item.get("id") for item in p_data if isinstance(item, dict) and item.get("id")}
+    except Exception:
+        pass
+
+    banned_ids = set()
+    try:
+        with open("banned.pl", "r") as f:
+            content = f.read().strip()
+            if content:
+                banned_data = json.loads(content)
+                banned_ids = {item.get("id") for item in banned_data if isinstance(item, dict) and item.get("id")}
+    except Exception:
+        pass
+
     # sp=EgJAAQ%3D%3D is filters for live streams only on YouTube
     sp = "EgJAAQ%3D%3D" if live else ""
     url = f"https://www.youtube.com/results?search_query={urllib.parse.quote(q)}"
@@ -129,11 +217,15 @@ async def search_yt(q: str, live: bool = True):
         "Accept-Language": "en-US,en;q=0.9"
     }
     
+    results = []
     try:
         req = urllib.request.Request(url, headers=headers)
         with urllib.request.urlopen(req, timeout=5) as response:
             html = response.read().decode('utf-8')
             
+        api_key_match = re.search(r'"innertubeApiKey"\s*:\s*"([^"]+)"', html)
+        api_key = api_key_match.group(1) if api_key_match else None
+        
         json_pattern = re.compile(r'var ytInitialData\s*=\s*({.*?});')
         match = json_pattern.search(html)
         if not match:
@@ -146,40 +238,75 @@ async def search_yt(q: str, live: bool = True):
         data = json.loads(match.group(1))
         contents = data['contents']['twoColumnSearchResultsRenderer']['primaryContents']['sectionListRenderer']['contents']
         
-        results = []
-        for section in contents:
-            item_section = section.get('itemSectionRenderer', {})
-            contents_items = item_section.get('contents', [])
-            for item in contents_items:
-                video_renderer = item.get('videoRenderer', {})
-                if not video_renderer:
-                    continue
-                    
-                video_id = video_renderer.get('videoId')
-                if not video_id:
-                    continue
-                    
-                title = ""
-                title_runs = video_renderer.get('title', {}).get('runs', [])
-                if title_runs:
-                    title = title_runs[0].get('text', '')
-                    
-                channel = ""
-                owner_runs = video_renderer.get('ownerText', {}).get('runs', [])
-                if owner_runs:
-                    channel = owner_runs[0].get('text', '')
-                    
-                results.append({
-                    "id": video_id,
-                    "title": title,
-                    "thumbnail": f"https://img.youtube.com/vi/{video_id}/mqdefault.jpg",
-                    "channel": channel,
-                    "isLive": live
-                })
-        return {"results": results}
+        continuation_token = parse_search_items(contents, results, playlist_ids, banned_ids, live)
+        
+        # Subsequent pages logic using InnerTube continuation
+        page = 2
+        max_pages = 8 # Prevent infinite looping, usually ~5 pages are enough to get 100 filtered items
+        while continuation_token and len(results) < 100 and api_key and page <= max_pages:
+            api_url = f"https://www.youtube.com/youtubei/v1/search?key={api_key}"
+            post_data = {
+                "context": {
+                    "client": {
+                        "clientName": "WEB",
+                        "clientVersion": "2.20230622.01.00",
+                        "hl": "en",
+                        "gl": "US"
+                    }
+                },
+                "continuation": continuation_token
+            }
+            
+            post_bytes = json.dumps(post_data).encode('utf-8')
+            req_post = urllib.request.Request(
+                api_url, 
+                data=post_bytes,
+                headers={
+                    "Content-Type": "application/json",
+                    "User-Agent": headers["User-Agent"]
+                }
+            )
+            
+            with urllib.request.urlopen(req_post, timeout=5) as response:
+                res_json = json.loads(response.read().decode('utf-8'))
+                
+            commands = res_json.get('onResponseReceivedCommands', [])
+            next_token = None
+            for cmd in commands:
+                append_cmd = cmd.get('appendContinuationItemsAction', {})
+                if append_cmd:
+                    items = append_cmd.get('continuationItems', [])
+                    for item in items:
+                        video_renderer = item.get('videoRenderer', {})
+                        if video_renderer:
+                            video_id = video_renderer.get('videoId')
+                            if video_id and video_id not in playlist_ids and video_id not in banned_ids:
+                                title = ""
+                                title_runs = video_renderer.get('title', {}).get('runs', [])
+                                if title_runs:
+                                    title = title_runs[0].get('text', '')
+                                channel = ""
+                                owner_runs = video_renderer.get('ownerText', {}).get('runs', [])
+                                if owner_runs:
+                                    channel = owner_runs[0].get('text', '')
+                                results.append({
+                                    "id": video_id,
+                                    "title": title,
+                                    "thumbnail": f"https://img.youtube.com/vi/{video_id}/mqdefault.jpg",
+                                    "channel": channel,
+                                    "isLive": live
+                                })
+                        continuation_renderer = item.get('continuationItemRenderer', {})
+                        if continuation_renderer:
+                            next_token = continuation_renderer.get('continuationEndpoint', {}).get('continuationCommand', {}).get('token')
+            
+            continuation_token = next_token
+            page += 1
+            
+        return {"results": results[:100]}
     except Exception as e:
         print("Search API error:", e)
-        return {"results": []}
+        return {"results": results[:100]}
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8100, reload=True)

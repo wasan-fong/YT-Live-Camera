@@ -16,7 +16,8 @@
     {
         "id": "6kX0K9u3NTQ",
         "name": "\ud83d\udd34 PHILIPPINES Live Camera Bankerohan Lyn's Food Haus, Davao City #philippines",
-        "group": "JAZBAZ"
+        "group": "JAZBAZ",
+        "starred": false
     },
     {
         "id": "z9O-XeUraDs",
